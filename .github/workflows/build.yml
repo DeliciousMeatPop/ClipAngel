@@ -1,0 +1,55 @@
+name: Build (for screenshots)
+
+# Builds the app so you can download a runnable copy and take before/after
+# screenshots. Each run produces two artifacts:
+#   ClipAngel-before  -> built from master (original hard-coded colors)
+#   ClipAngel-after   -> built from the commit that triggered this run
+# Download both, unzip, run ClipAngel.exe on Windows, and screenshot each.
+#
+# This is a .NET Framework 4.8 WinForms app, so it only builds on Windows and
+# the GUI can't be captured headlessly in CI - the artifacts are meant to be
+# run locally. A failed build here also doubles as a compile check for the diff.
+
+on:
+  push:
+    branches:
+      - "claude/**"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: before
+            ref: master
+          - variant: after
+            ref: ${{ github.sha }}
+
+    steps:
+      - name: Check out ${{ matrix.variant }} (${{ matrix.ref }})
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Set up NuGet
+        uses: nuget/setup-nuget@v2
+
+      - name: Restore NuGet packages
+        run: nuget restore ClipAngel.sln
+
+      - name: Build (Release, Any CPU)
+        run: msbuild ClipAngel.sln /p:Configuration=Release /p:Platform="Any CPU" /m /v:minimal
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClipAngel-${{ matrix.variant }}
+          path: bin/Release/
+          if-no-files-found: error
