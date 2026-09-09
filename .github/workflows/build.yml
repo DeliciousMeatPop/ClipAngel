@@ -41,6 +41,30 @@ jobs:
       - name: Set up NuGet
         uses: nuget/setup-nuget@v2
 
+      # SecretData.cs holds API keys / crypto IV and is intentionally kept out
+      # of the repo (.gitignore); only the empty template SecretData1.cs is
+      # committed. Generate a placeholder so the project compiles. The features
+      # it feeds (Firebase sync, ImgBB upload, DB encryption) are off by default,
+      # so empty values are fine for building and screenshotting. Guarded so a
+      # real SecretData.cs (e.g. restored from a secret) is never overwritten.
+      - name: Generate placeholder SecretData.cs
+        shell: pwsh
+        run: |
+          if (-not (Test-Path SecretData.cs)) {
+            @'
+          namespace ClipAngel
+          {
+              public static class SecretData
+              {
+                  public static string FirebaseDatabase() { return ""; }
+                  public static string FirebaseMessaging() { return ""; }
+                  public static string CryptoIV() { return ""; }
+                  public static string ImgBBKey() { return ""; }
+              }
+          }
+          '@.TrimStart() | Set-Content -Path SecretData.cs -Encoding UTF8
+          }
+
       - name: Restore NuGet packages
         run: nuget restore ClipAngel.sln
 
