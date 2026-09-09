@@ -44,8 +44,15 @@ jobs:
       - name: Restore NuGet packages
         run: nuget restore ClipAngel.sln
 
-      - name: Build (Release, Any CPU)
-        run: msbuild ClipAngel.sln /p:Configuration=Release /p:Platform="Any CPU" /m /v:minimal
+      # Build only the app project, not the whole solution. The solution also
+      # contains ExternalUpdater, a standalone helper the app does not reference
+      # that targets .NET Framework 4.5.2 (whose targeting pack isn't on the
+      # runner). The app itself targets 4.8, which is preinstalled, so building
+      # the project directly avoids that dependency. Note: a direct project
+      # build uses Platform "AnyCPU" (no space); the solution's "Any CPU" maps
+      # to it, but msbuild on the .csproj wants the project-level spelling.
+      - name: Build app (Release, AnyCPU)
+        run: msbuild ClipAngel.csproj /p:Configuration=Release /p:Platform=AnyCPU /m /v:minimal
 
       - name: Upload build
         uses: actions/upload-artifact@v4
